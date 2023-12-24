@@ -84,7 +84,7 @@ def parallel_process(processing_dir, fastq_files, reference_file, quality_thresh
             future.result()
 
 
-def set_filenames(output_dir):
+def set_filenames(output_dir, data_dir):
     filenames = {"freqs_file_path": os.path.join(output_dir, 'freqs.tsv'),
                  "linked_mutations_path": os.path.join(output_dir, 'linked_mutations.tsv'),
                  "mutation_read_list_path": os.path.join(output_dir, 'mutation_read_list.tsv'),
@@ -93,8 +93,11 @@ def set_filenames(output_dir):
                  "read_counter_file": os.path.join(output_dir, 'read_counter.tsv'),
                  "summary_graphs": os.path.join(output_dir, 'summary.png'),
                  "processing_dir": os.path.join(output_dir, "processing"),
-                 'linked_mutations_dir': os.path.join(output_dir, "linked_mutations"),
-                 'data_dir': os.path.join(output_dir, "data")}
+                 'linked_mutations_dir': os.path.join(output_dir, "linked_mutations")}
+    if data_dir is None:
+        filenames['data_dir'] = os.path.join(output_dir, "data")
+    else:
+        filenames['data_dir'] = data_dir
     filenames['basecall_dir'] = os.path.join(filenames['processing_dir'], 'basecall')
     os.makedirs(filenames['data_dir'], exist_ok=True)
     os.makedirs(filenames["basecall_dir"], exist_ok=True)
@@ -106,6 +109,8 @@ def create_consensus_and_check_alignment_with_ref(reference_file, align_to_ref, 
     reference = get_sequence_from_fasta(reference_file)
     freqs_file_path = os.path.join(iteration_data_dir, f"freqs_{iteration_counter}.tsv")
     called_bases_files = get_files_by_extension(basecall_dir, "called_bases")
+    if len(called_bases_files)==0:
+        return 0, None
     create_freqs_file(called_bases_files=called_bases_files, output_path=freqs_file_path, reference=reference)
     if align_to_ref == "Y":
         consensus_path = os.path.join(iteration_data_dir, f"consensus_aligned_to_ref_{iteration_counter}.fasta")
@@ -211,6 +216,7 @@ def process_data(align_to_ref, dust, evalue, fastq_files, log, max_basecall_iter
                                                                                    iteration_data_dir=iteration_data_dir,
                                                                                    min_coverage=min_coverage,
                                                                                    min_frequency=min_frequency)
+        
         alignments.append(alignment)
         log.info(f'Iteration alignment score: {round(alignment_score, 4)}')
         if alignment_score == 1:
@@ -262,17 +268,17 @@ def remove_unnecessary_files(dirs_to_remove, files_to_remove):
 
 
 def runner(input_dir, reference_file, output_dir, max_basecall_iterations, min_coverage, db_comment,
-           quality_threshold, task, evalue, dust, num_alignments, soft_masking, perc_identity, mode,
-           align_to_ref, cleanup, min_frequency, cpu_count, overlapping_reads, 
-           db_path, max_memory):
+           quality_threshold, blast_task, blast_evalue, blast_dust, blast_num_alignments, blast_soft_masking, 
+           blast_perc_identity, blast_mode, align_to_ref, cleanup, min_frequency, cpu_count, overlapping_reads, 
+           db_path, max_memory, apply_prepare_data=True, data_dir=None):
     if not db_path:
         db_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'db')
     if not output_dir:
         output_dir = assign_output_dir(db_path)
-    validate_input(output_dir, input_dir, reference_file, mode)
+    validate_input(output_dir, input_dir, reference_file, blast_mode)
     log = pipeline_logger(logger_name='AccuNGS-Runner', log_folder=output_dir)
     try:
-        filenames = set_filenames(output_dir=output_dir)
+        filenames = set_filenames(output_dir=output_dir, data_dir=data_dir)
         if not cpu_count:
             cpu_count = mp.cpu_count()
         input_dir_hash = md5_dir(input_dir)
@@ -282,36 +288,42 @@ def runner(input_dir, reference_file, output_dir, max_basecall_iterations, min_c
         log.debug(f"runner params: {params}")  # TODO: why does this contain status..?
         log.info("Preparing data")
         update_meta_data(output_dir=output_dir, status='Preparing data...', db_path=db_path)
-        prepare_data(input_dir=input_dir, output_dir=filenames['data_dir'], overlapping_reads=overlapping_reads,
-                     cpu_count=cpu_count, max_memory=max_memory)
+        if apply_prepare_data:
+            prepare_data(input_dir=input_dir, output_dir=filenames['data_dir'], overlapping_reads=overlapping_reads,
+                        cpu_count=cpu_count, max_memory=max_memory)
         data_files = get_files_in_dir(filenames['data_dir'])
         fastq_files = [file_path for file_path in data_files if "fastq.part_" in os.path.basename(file_path)]
         log.info(f"Processing {len(fastq_files)} fastq files.")
         update_meta_data(output_dir=output_dir, status='Processing data...', db_path=db_path)
         reference_file, alignments, iterations = process_data(
-            align_to_ref=align_to_ref, dust=dust, min_frequency=min_frequency,
-            evalue=evalue, fastq_files=fastq_files, log=log, soft_masking=soft_masking,
+            align_to_ref=align_to_ref, dust=blast_dust, min_frequency=min_frequency,
+            evalue=blast_evalue, fastq_files=fastq_files, log=log, soft_masking=blast_soft_masking,
             max_basecall_iterations=max_basecall_iterations, min_coverage=min_coverage,
-            mode=mode, num_alignments=num_alignments, overlapping_reads=overlapping_reads,
-            output_dir=output_dir, perc_identity=perc_identity, reference_file=reference_file,
+            mode=blast_mode, num_alignments=blast_num_alignments, overlapping_reads=overlapping_reads,
+            output_dir=output_dir, perc_identity=blast_perc_identity, reference_file=reference_file,
             processing_dir=filenames['processing_dir'], quality_threshold=quality_threshold,
-            task=task, basecall_dir=filenames['basecall_dir'])
+            task=blast_task, basecall_dir=filenames['basecall_dir'])
         log.info("Aggregating processed fastq files outputs...")
         last_freqs = os.path.join(output_dir, 'iteration_data', f'freqs_{iterations}.tsv')
-        shutil.copy(last_freqs, filenames['freqs_file_path'])
-        aggregate_processed_output(input_dir=filenames['processing_dir'], output_dir=output_dir,
-                                   min_coverage=min_coverage, min_frequency=min_frequency, cleanup=cleanup)
-        create_stats_file(output_dir, filenames, alignments)
-        log.info("Generating graphs...")
-        graph_summary(freqs_file=filenames['freqs_file_path'], blast_file=filenames['blast_file'],
-                      read_counter_file=filenames['read_counter_file'],
-                      output_file=filenames['summary_graphs'], min_coverage=min_coverage)  # TODO: drop low quality mutations?
-        log.info(f"Most outputs are ready in {output_dir} !")
-        if cleanup == "Y":
-            dirs_to_remove = [filenames['basecall_dir'], filenames['data_dir']]
-            files_to_remove = [filenames['blast_file']]
-            log.info(f"Removing intermediary files to save space...")
-            remove_unnecessary_files(dirs_to_remove, files_to_remove)
+        if not os.path.exists(filenames['blast_file']):
+            log.info('Blast found no matches for the reference in the data!')
+        else:
+            shutil.copy(last_freqs, filenames['freqs_file_path'])
+            aggregate_processed_output(input_dir=filenames['processing_dir'], output_dir=output_dir,
+                                    min_coverage=min_coverage, min_frequency=min_frequency, cleanup=cleanup)
+            create_stats_file(output_dir, filenames, alignments)
+            log.info("Generating graphs...")
+            graph_summary(freqs_file=filenames['freqs_file_path'], blast_file=filenames['blast_file'],
+                        read_counter_file=filenames['read_counter_file'],
+                        output_file=filenames['summary_graphs'], min_coverage=min_coverage)  # TODO: drop low quality mutations?
+            log.info(f"Most outputs are ready in {output_dir} !")
+            if cleanup == "Y":
+                dirs_to_remove = [filenames['basecall_dir']]
+                if data_dir is None:
+                    dirs_to_remove.append(filenames['data_dir'])
+                files_to_remove = [filenames['blast_file']]
+                log.info(f"Removing intermediary files to save space...")
+                remove_unnecessary_files(dirs_to_remove, files_to_remove)
         update_meta_data(output_dir=output_dir, status='Done', db_path=db_path)
         log.info(f"Done!")
     except Exception as e:
@@ -357,7 +369,6 @@ def create_runner_parser():
     parser.add_argument("-dbc", "--db_comment", help='comment to store in db')
     parser.add_argument("-mm", "--max_memory", help='limit memory usage to this many megabytes '
                                                     '(None would use available memory when starting to run)')
-    parser.add_argument("-ch", "--calculate_haplotypes", help='Y/N, Run pipeline including calculating haplotypes')
     return parser
 
 
@@ -368,10 +379,10 @@ if __name__ == "__main__":
     args.update({key: value for key, value in parser_args.items() if value is not None})
     runner(input_dir=args['input_dir'], output_dir=args['output_dir'], reference_file=args['reference_file'],
            max_basecall_iterations=int(args['max_basecall_iterations']), overlapping_reads=args['overlapping_reads'],
-           quality_threshold=int(args['quality_threshold']), task=args['blast_task'], max_memory=args['max_memory'],
-           evalue=float(args['blast_evalue']), dust=args['blast_dust'],
-           num_alignments=int(args['blast_num_alignments']),
-           mode=args['blast_mode'], perc_identity=float(args['blast_perc_identity']), cpu_count=args['cpu_count'],
+           quality_threshold=int(args['quality_threshold']), blast_task=args['blast_task'], max_memory=args['max_memory'],
+           blast_evalue=float(args['blast_evalue']), blast_dust=args['blast_dust'],
+           blast_num_alignments=int(args['blast_num_alignments']),
+           blast_mode=args['blast_mode'], blast_perc_identity=float(args['blast_perc_identity']), cpu_count=args['cpu_count'],
            min_coverage=int(args['min_coverage']), db_comment=args['db_comment'],
-           soft_masking=args['blast_soft_masking'], min_frequency=float(args['min_frequency']),
+           blast_soft_masking=args['blast_soft_masking'], min_frequency=float(args['min_frequency']),
            cleanup=args['cleanup'], align_to_ref=args['align_to_ref'], db_path=args['db_path'])
