@@ -353,7 +353,7 @@ def create_runner_parser():
     parser.add_argument("-be", "--blast_evalue", help="blast's e value parameter", type=float)
     parser.add_argument("-bd", "--blast_dust", help="blast's dust parameter")
     parser.add_argument("-bn", "--blast_num_alignments", type=int, help="blast's num_alignments parameter")
-    parser.add_argument("-bp", "--blast_perc_identity", type=int, help="blast's perc_identity parameter")
+    parser.add_argument("-bp", "--blast_perc_identity", type=float, help="blast's perc_identity parameter")
     parser.add_argument("-bs", "--blast_soft_masking", help="blast's soft_masking parameter")
     parser.add_argument("-bm", "--blast_mode", help="RefToSeq or SeqToRef")  # TODO: docs
     parser.add_argument("-qt", "--quality_threshold", type=int,
