@@ -262,6 +262,7 @@ def process_fastq(fastq_file, reference, output_dir, quality_threshold, task, ev
     run_blast(reads_fasta=reads_fasta_file_path, reference=reference, output=blast_output_file, mode=mode, task=task,
               evalue=evalue, num_alignments=num_alignments, dust=dust, soft_masking=soft_masking, log=log,
               perc_identity=perc_identity)
+    os.remove(reads_fasta_file_path)
     basecall_output = os.path.join(output_dir, 'basecall')
     if not quality_threshold:
         quality_threshold = 30
