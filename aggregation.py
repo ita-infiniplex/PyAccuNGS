@@ -44,6 +44,8 @@ def aggregate_called_bases(called_bases_files, reference):
         else:
             freqs = freqs.add(freqs_part, fill_value=0)
     freqs = freqs.reset_index().rename(columns={'read_id': 'base_count'})
+    if freqs.empty:
+        return freqs
     freqs['overlap_ratio'] = (freqs['overlap'] / freqs['base_count']).fillna(0) / 2  # overlap counts twice!
     freqs['total_times_called'] = freqs['base_count'] * (1 + freqs['overlap_ratio'])
     freqs['avg_qscore'] = round((freqs['quality'] / freqs['total_times_called']).fillna(0), 1)
@@ -54,12 +56,13 @@ def aggregate_called_bases(called_bases_files, reference):
 
 def create_freqs_file(called_bases_files, output_path, reference):
     freqs = aggregate_called_bases(called_bases_files, reference)
-    coverage = freqs.groupby('ref_pos').base_count.sum()
-    freqs['coverage'] = freqs.ref_pos.map(lambda pos: coverage[round(pos)])
-    freqs['frequency'] = (freqs['base_count'] / freqs['coverage']).fillna(0)
-    freqs['base_rank'] = freqs.read_base.nunique() - freqs.groupby('ref_pos').base_count.rank('min')
-    freqs['probability'] = 1 - (1 - freqs["frequency"]) ** freqs['coverage']
-    freqs = round(freqs, 4)
+    if not freqs.empty:
+        coverage = freqs.groupby('ref_pos').base_count.sum()
+        freqs['coverage'] = freqs.ref_pos.map(lambda pos: coverage[round(pos)])
+        freqs['frequency'] = (freqs['base_count'] / freqs['coverage']).fillna(0)
+        freqs['base_rank'] = freqs.read_base.nunique() - freqs.groupby('ref_pos').base_count.rank('min')
+        freqs['probability'] = 1 - (1 - freqs["frequency"]) ** freqs['coverage']
+        freqs = round(freqs, 4)
     freqs.to_csv(output_path, sep="\t", index=False)
 
 
