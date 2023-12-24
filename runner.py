@@ -244,8 +244,8 @@ def validate_input(output_dir, input_dir, reference_file, mode):
                 raise Exception("reference_file must be of type fasta!")
     if not os.path.isdir(input_dir):
         raise Exception("Input_dir must exist!")
-    files_fasta = get_files_by_extension(input_dir, "fastq")
-    files_fastagz = get_files_by_extension(input_dir, "fastq.gz")
+    files_fasta = get_files_by_extension(input_dir, "fastq") + get_files_by_extension(input_dir, "fq")
+    files_fastagz = get_files_by_extension(input_dir, "fastq.gz") + get_files_by_extension(input_dir, "fq.gz")
     if len(files_fasta) == 0 and len(files_fastagz) == 0:
         raise Exception("Could not find files ending with '.fastq' or 'fastq.gz' in input_dir !")
 

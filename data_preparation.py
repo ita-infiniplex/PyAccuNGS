@@ -94,7 +94,7 @@ def split_fastq_file(fastq_file, output_dir, cpu_count, max_memory):
 
 
 def find_read_files(input_dir, log):
-    fastq_files = get_files_by_extension(input_dir, 'fastq')
+    fastq_files = get_files_by_extension(input_dir, 'fastq') + get_files_by_extension(input_dir, 'fa')
     if len(fastq_files) == 0:
         gz_files = get_files_by_extension(input_dir, 'gz')
         file_type = "gz"
