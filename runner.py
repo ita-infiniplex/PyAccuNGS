@@ -339,7 +339,7 @@ def create_runner_parser():
                         help="Path to directory containing fastq/gz files or sub directories containg fastq/gz files.")
     parser.add_argument("-o", "--output_dir", help="A directory for output files. "
                                                    "If none is given will put it in the db")
-    parser.add_argument("-r", "--reference_file", required=True, help="Full path to reference file (including "
+    parser.add_argument("-r", "--reference_file", required=False, help="Full path to reference file (including "
                                                                       "extension) of type fasta to align against.")
     parser.add_argument("-m", "--max_basecall_iterations", type=int,
                         help="Number of times to rerun with previous consensus as the new reference before giving up.")
