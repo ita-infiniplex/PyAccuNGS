@@ -22,12 +22,15 @@ def multi_ref_runner(args):
     del args['references_dir']
     output_parent = args['output_dir']
     # first run includes preparing the data
-    args['apply_prepare_data'] = True 
-    first_ref = ref_files[0]
-    args = adjust_args(args, first_ref, output_parent)
-    runner(**args)
-    # next runs dont need to prepare the data
-    ref_files = ref_files[1:]
+    if not os.path.exists(args['data_dir']):
+        args['apply_prepare_data'] = True 
+        first_ref = ref_files[0]
+        args = adjust_args(args, first_ref, output_parent)
+        runner(**args)
+        # next runs dont need to prepare the data
+        ref_files = ref_files[1:]
+    else:
+        log.info('data_dir exists, so trying to run with existing data.')
     args['apply_prepare_data'] = False 
     for ref_file in ref_files:
         args = adjust_args(args, ref_file, output_parent)
