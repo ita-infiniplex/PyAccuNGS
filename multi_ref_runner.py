@@ -12,7 +12,7 @@ def adjust_args(args, ref_file, output_parent):
     args['reference_file'] = ref_file
     ref_name = ref_file.split('/')[-1].split('.fasta')[0]
     args['output_dir'] = output_parent + f'/{ref_name}'
-    os.makedirs(args['output_dir'])
+    os.makedirs(args['output_dir'], exist_ok=True) 
     return args
 
 def multi_ref_runner(args):
