@@ -305,8 +305,8 @@ def runner(input_dir, reference_file, output_dir, max_basecall_iterations, min_c
             task=blast_task, basecall_dir=filenames['basecall_dir'])
         log.info("Aggregating processed fastq files outputs...")
         last_freqs = os.path.join(output_dir, 'iteration_data', f'freqs_{iterations}.tsv')
-        if not os.path.exists(filenames['blast_file']):
-            log.info('Blast found no matches for the reference in the data!')
+        if not os.path.exists(last_freqs):
+            log.info('Could not find matches for the reference in the data!')
         else:
             shutil.copy(last_freqs, filenames['freqs_file_path'])
             aggregate_processed_output(input_dir=filenames['processing_dir'], output_dir=output_dir,
