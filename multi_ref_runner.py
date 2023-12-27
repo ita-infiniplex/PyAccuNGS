@@ -34,7 +34,11 @@ def multi_ref_runner(args):
     args['apply_prepare_data'] = False 
     for ref_file in ref_files:
         args = adjust_args(args, ref_file, output_parent)
-        runner(**args)
+        try:
+            runner(**args)
+        except Exception as e:
+            log.exception(e)
+
 
 
 if __name__ == "__main__":
