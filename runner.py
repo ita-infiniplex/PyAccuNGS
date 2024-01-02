@@ -281,8 +281,8 @@ def runner(input_dir, reference_file, output_dir, max_basecall_iterations, min_c
         filenames = set_filenames(output_dir=output_dir, data_dir=data_dir)
         if not cpu_count:
             cpu_count = mp.cpu_count()
-        input_dir_hash = md5_dir(input_dir)
-        reference_file_hash = md5_file(reference_file)
+        #input_dir_hash = md5_dir(input_dir)
+        #reference_file_hash = md5_file(reference_file)
         params = locals().copy()
         update_meta_data(params=params, output_dir=output_dir, status='Setting up...', db_path=db_path)
         log.debug(f"runner params: {params}")  # TODO: why does this contain status..?
