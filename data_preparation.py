@@ -25,9 +25,8 @@ from utils import get_files_by_extension, extract_gz
 
 def merger_generator(forward_handle, reverse_handle, rep_length, log):
     for a, b in zip(SeqIO.parse(forward_handle, "fastq"), SeqIO.parse(reverse_handle, "fastq")):
-        if a.id.split(" ")[0] != b.id.split(" ")[0]:
-            # TODO: what does this mean and shouldnt it be an exception?
-            log.warning("Problem, discrepancy in pair id's: {}, {}".format(a.id.split(" ")[0], b.id.split(" ")[0]))
+        if a.id.split(" ")[0][:-1] != b.id.split(" ")[0][:-1]:
+            log.warning("Discrepancy in pair id's: {}, {}".format(a.id.split(" ")[0], b.id.split(" ")[0]))
         new_seq_id = a.id.split(" ")[0]
         new_seq_str = str(a.seq) + ("N" * rep_length) + str(b.seq)
         a_quals = a.letter_annotations["phred_quality"]
